@@ -11,6 +11,11 @@ provider "libvirt" {
   uri = "qemu:///system"
 }
 
+variable "ssh_public_key" {
+  description = "SSH public key for cloud-init (ansible user). Set via TF_VAR_ssh_public_key or -var."
+  type        = string
+}
+
 # 1. The Base Image (Download Ubuntu Cloud Image)
 resource "libvirt_volume" "ubuntu_base" {
   name   = "ubuntu-noble-base"
@@ -35,7 +40,7 @@ resource "libvirt_cloudinit_disk" "commoninit" {
 users:
   - name: ansible
     ssh_authorized_keys:
-      - ${file("~/.ssh/id_rsa.pub")}
+      - ${var.ssh_public_key}
     sudo: ALL=(ALL) NOPASSWD:ALL
 ssh_pwauth: true
 disable_root: false

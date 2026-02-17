@@ -14,7 +14,7 @@ Terraform and automation for a home lab: KVM/libvirt VMs (Ubuntu Noble), includi
 
 - **Ubuntu server** (22.04 or 24.04 recommended) where Terraform will run and VMs will live
 - **sudo** and network access on that server
-- **SSH key** at `~/.ssh/id_rsa.pub` on the server (used by cloud-init for the `ansible` user)
+- **SSH key**: pass your public key when running Terraform (see below)
 
 ## Quick Start (Automated)
 
@@ -36,6 +36,8 @@ The script will:
 
 ```bash
 cd /path/to/home-lab-iac/terraform
+# Provide your SSH public key (used by cloud-init for the ansible user)
+export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_rsa.pub)"
 terraform plan    # review changes
 terraform apply   # create/update VMs
 ```

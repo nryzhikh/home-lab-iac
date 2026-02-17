@@ -22,7 +22,7 @@ fi
 
 # --- 2. libvirt / KVM ---
 echo "Ensuring libvirt and KVM are installed..."
-sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils genisoimage
 
 echo "Enabling and starting libvirtd..."
 sudo systemctl enable --now libvirtd

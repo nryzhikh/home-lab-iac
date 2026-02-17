@@ -14,11 +14,11 @@ provider "libvirt" {
 variable "ssh_public_key" {
   description = "SSH public key for cloud-init (ansible user). Defaults to ~/.ssh/id_ed25519.pub or ~/.ssh/id_rsa.pub. Override via TF_VAR_ssh_public_key or -var."
   type        = string
-  default     = try(file("${env("HOME")}/.ssh/id_ed25519.pub"), file("${env("HOME")}/.ssh/id_rsa.pub"), "")
-  validation {
-    condition     = length(var.ssh_public_key) > 0
-    error_message = "SSH public key required. Add ~/.ssh/id_ed25519.pub (or id_rsa.pub), or set TF_VAR_ssh_public_key / -var ssh_public_key=..."
-  }
+  default     = ""
+}
+
+locals {
+  ssh_public_key = var.ssh_public_key != "" ? var.ssh_public_key : try(file("${env("HOME")}/.ssh/id_ed25519.pub"), file("${env("HOME")}/.ssh/id_rsa.pub"), "")
 }
 
 # 1. The Base Image (Download Ubuntu Cloud Image)
@@ -39,13 +39,19 @@ resource "libvirt_volume" "k8s_core_disk" {
 
 # Cloud-Init Config for Core
 resource "libvirt_cloudinit_disk" "commoninit" {
+  lifecycle {
+    precondition {
+      condition     = length(local.ssh_public_key) > 0
+      error_message = "SSH public key required. Add ~/.ssh/id_ed25519.pub (or id_rsa.pub), or set TF_VAR_ssh_public_key / -var ssh_public_key=..."
+    }
+  }
   name      = "commoninit.iso"
   user_data = <<EOF
 #cloud-config
 users:
   - name: ansible
     ssh_authorized_keys:
-      - ${var.ssh_public_key}
+      - ${local.ssh_public_key}
     sudo: ALL=(ALL) NOPASSWD:ALL
 ssh_pwauth: true
 disable_root: false

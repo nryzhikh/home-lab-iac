@@ -63,22 +63,33 @@ That path is resolved on the **machine where you run Terraform** (your Ubuntu se
 
 ## GPU Passthrough (k8s-inference)
 
-The k8s-inference domain includes a `hostdev` block for PCI passthrough. The PCI addresses (domain, bus, slot, function) are **host-specific**.
+The **dmacvicar/libvirt** provider does **not** support `hostdev` (PCI passthrough) in the `libvirt_domain` resource. The k8s-inference VM is created without a GPU; add passthrough **after** `terraform apply`:
 
-1. On the Ubuntu host, list PCI devices:
+1. **Discover the GPU BDF** on the host:
    ```bash
    virsh nodedev-list --tree
    # or
    lspci | grep -i vga
    ```
-2. Note the GPU’s BDF (e.g. `0000:01:00.0` → domain=0x0000, bus=0x01, slot=0x00, function=0x0).
-3. In `terraform/main.tf`, in the `libvirt_domain.k8s_inference` resource, set:
-   - `domain`   – e.g. `"0x0000"`
-   - `bus`      – e.g. `"0x01"`
-   - `slot`     – e.g. `"0x00"`
-   - `function` – e.g. `"0x0"`
+   Example: `0000:01:00.0` (optionally `0000:01:00.1` for audio).
 
-If you do **not** have a GPU or do not want passthrough, comment out or remove the entire `hostdev { ... }` block; otherwise Terraform will fail when the PCI device is missing or in use.
+2. **Create a hostdev XML file** (e.g. `gpu-hostdev.xml`):
+   ```xml
+   <hostdev mode='subsystem' type='pci' managed='yes'>
+     <source>
+       <address domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
+     </source>
+   </hostdev>
+   ```
+
+3. **Attach the device** (VM must be shut down for many GPUs):
+   ```bash
+   virsh shutdown k8s-inference
+   virsh attach-device k8s-inference gpu-hostdev.xml --config
+   virsh start k8s-inference
+   ```
+
+Alternatively, run `virsh edit k8s-inference` and add the `<hostdev>...</hostdev>` block under `<devices>`. Changes made via `virsh edit` are **not** managed by Terraform; re-applying may overwrite them if the provider later supports hostdev or you switch to a different workflow.
 
 ## Storage Pool
 
@@ -108,7 +119,7 @@ Both VMs use `network_name = "default"` (usually `virbr0`, NAT). They get DHCP l
 
 ### “Could not find PCI device”
 
-- The GPU BDF in `hostdev` does not match this host. Use `lspci` / `virsh nodedev-list --tree` and update the block, or remove the block if you do not need GPU passthrough.
+- If you attached a GPU via `virsh attach-device` or `virsh edit`, the GPU BDF in your hostdev XML must match this host. Use `lspci` / `virsh nodedev-list --tree` to get the correct address and update the XML, or detach the device if you do not need GPU passthrough.
 
 ### Base image download fails
 

@@ -99,21 +99,11 @@ resource "libvirt_domain" "k8s_inference" {
 
   cloudinit = libvirt_cloudinit_disk.commoninit.id
 
-  # THIS IS THE MAGIC: GPU PASSTHROUGH IN LIBVIRT
-  # You must know the PCI Bus/Slot/Function of your GPU on the host
-  # Run `virsh nodedev-list --tree` to find it.
-  
-  hostdev {
-    mode = "subsystem"
-    type = "pci"
-    managed = "yes"
-    
-    # Example: 0000:01:00.0 becomes bus=1, slot=0, function=0
-    domain = "0x0000"
-    bus    = "0x01"
-    slot   = "0x00"
-    function = "0x0"
-  }
+  # GPU/PCI passthrough: terraform-provider-libvirt does not support hostdev in HCL.
+  # After apply, add the device manually, e.g.:
+  #   virsh attach-device k8s-inference /path/to/gpu-hostdev.xml
+  # Or edit: virsh edit k8s-inference and add a <hostdev> block under <devices>.
+  # See docs/terraform.md for PCI address discovery (lspci / virsh nodedev-list).
 
   console {
     type        = "pty"

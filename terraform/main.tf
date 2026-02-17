@@ -12,8 +12,13 @@ provider "libvirt" {
 }
 
 variable "ssh_public_key" {
-  description = "SSH public key for cloud-init (ansible user). Set via TF_VAR_ssh_public_key or -var."
+  description = "SSH public key for cloud-init (ansible user). Defaults to ~/.ssh/id_ed25519.pub or ~/.ssh/id_rsa.pub. Override via TF_VAR_ssh_public_key or -var."
   type        = string
+  default     = try(file("${env("HOME")}/.ssh/id_ed25519.pub"), file("${env("HOME")}/.ssh/id_rsa.pub"), "")
+  validation {
+    condition     = length(var.ssh_public_key) > 0
+    error_message = "SSH public key required. Add ~/.ssh/id_ed25519.pub (or id_rsa.pub), or set TF_VAR_ssh_public_key / -var ssh_public_key=..."
+  }
 }
 
 # 1. The Base Image (Download Ubuntu Cloud Image)
